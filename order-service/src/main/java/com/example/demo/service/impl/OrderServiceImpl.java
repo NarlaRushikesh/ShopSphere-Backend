@@ -182,18 +182,16 @@ public class OrderServiceImpl implements OrderService {
         double totalAmount = 0;
 
         for (CartItemDTO itemReq : cart.getItems()) {
-            ProductResponse product = catalogClient.getProduct(itemReq.getProductId());
-            if (product == null || product.getStock() < itemReq.getQuantity()) {
-                throw new RuntimeException("Product not found or out of stock: " + itemReq.getProductId());
-            }
-
-            double itemTotal = product.getPrice() * itemReq.getQuantity();
+            // Use price and name already stored in cart — avoids an extra Feign call
+            // Stock was validated when item was added to cart
+            double itemTotal = itemReq.getPrice() * itemReq.getQuantity();
             totalAmount += itemTotal;
 
             OrderItem orderItem = OrderItem.builder()
-                    .productId(product.getId())
+                    .productId(itemReq.getProductId())
+                    .productName(itemReq.getProductName())
                     .quantity(itemReq.getQuantity())
-                    .price(product.getPrice())
+                    .price(itemReq.getPrice())
                     .build();
 
             orderItems.add(orderItem);
@@ -213,9 +211,14 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // Reduce stock in catalog-service for each item
+        // Reduce stock in catalog-service for each item (best-effort)
         for (OrderItem item : orderItems) {
-            catalogClient.reduceStock(item.getProductId(), item.getQuantity());
+            try {
+                catalogClient.reduceStock(item.getProductId(), item.getQuantity());
+            } catch (Exception e) {
+                // Log but don't fail the order — stock sync can be retried
+                System.err.println("Warning: failed to reduce stock for product " + item.getProductId() + ": " + e.getMessage());
+            }
         }
 
         // Clear user's cart
