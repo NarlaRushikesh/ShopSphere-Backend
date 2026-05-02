@@ -1,0 +1,343 @@
+ShopSphere Project Evaluation Explanation
+
+1. Project Overview
+-------------------
+
+ShopSphere is a microservices-based e-commerce application with a React frontend and Spring Boot backend services.
+
+Frontend:
+- React 19 with Vite
+- Redux Toolkit for application state
+- React Router v7 for routing
+- Axios for HTTP calls
+- Tailwind CSS for UI styling
+- React Toastify for notifications
+
+Backend:
+- Java 17
+- Spring Boot 3.3.2
+- Spring Security for authentication and authorization
+- JWT for access tokens
+- Refresh tokens stored in the database
+- Spring Cloud Netflix Eureka for service discovery
+- Spring Cloud Config for centralized configuration
+- Spring Cloud Gateway as API gateway
+- Spring Data JPA for persistence
+- MySQL as the database
+- RabbitMQ for event messaging
+- Zipkin for distributed tracing
+
+Services:
+- api-gateway: gateway that routes frontend API calls to the correct backend service
+- auth-service: user authentication, registration, forgot-password, JWT, refresh tokens
+- catalog-service: product and category APIs
+- order-service: cart, order creation, payment, Razorpay integration
+- notificatoin-service: notification processing (consumes order events)
+- admin-service: admin-specific endpoints and functionality
+- eureka-service: service discovery registry
+- config-server: centralized Spring Cloud config server
+
+2. How the Website Starts
+-------------------------
+
+The frontend starts in `src/AppRoutes.jsx`.
+- Public pages: `/`, `/login`, `/register`, `/forgot-password`, `/categories`, `/products`, `/products/:id`, `/cart`
+- Protected pages: `/checkout`, `/orders`
+- Admin pages: `/admin`, `/admin/products`, `/admin/orders`
+
+Protected routes are enforced by `ProtectedRoute` in `AppRoutes.jsx`.
+- If the user is not authenticated, they are redirected to `/login`.
+- If the user is authenticated but not an admin, they cannot access `/admin` routes.
+
+The header component (`Header.jsx`) reads auth state and shows the cart count.
+- If `isAuthenticated` is true, it displays an account dropdown with order history and admin dashboard links.
+- It triggers `dispatch(fetchCart())` when the user logs in.
+
+3. Login Page Flow
+------------------
+
+The login page is `src/pages/Login.jsx`.
+- User enters email and password.
+- On form submit, the page calls `api.post("/auth/login", { email, password })`.
+- The backend returns:
+  - `token` (JWT access token)
+  - `refreshToken`
+
+Client-side actions after login:
+- Decode the JWT with `jwtDecode(token)` to extract the user role.
+- Create a user object with id, email, role, name.
+- Dispatch `setCredentials({ user, token, refreshToken })`.
+- Store `user`, `token`, and `refreshToken` in `localStorage`.
+- Navigate to `/admin` if role is ADMIN, otherwise navigate to `/`.
+
+4. Storage of JWT and Refresh Token
+-----------------------------------
+
+The frontend stores tokens in `localStorage`.
+- `localStorage.setItem("token", token)`
+- `localStorage.setItem("refreshToken", refreshToken)`
+
+The auth slice also stores the current user and authentication state in Redux.
+- `state.user`
+- `state.token`
+- `state.refreshToken`
+- `state.isAuthenticated`
+
+The Axios API instance in `src/services/api.js` attaches the token to every request:
+- `Authorization: Bearer <token>`
+
+5. Token Refresh Flow
+---------------------
+
+`src/services/api.js` has response interceptor logic:
+- If a request returns 401, it retries once.
+- It reads the refresh token from `localStorage`.
+- It calls `POST http://localhost:8089/auth/refresh` with `{ refreshToken }`.
+- If successful, it updates `localStorage` with the new token and optionally new refresh token.
+- It retries the original request with the new token.
+- If refresh fails, it removes auth data and redirects to `/login`.
+
+6. Forgot Password Flow
+-----------------------
+
+The forgot password page is `src/pages/ForgotPassword.jsx`.
+- Step 1: user enters email and calls `/auth/forgot-password`.
+- Step 2: backend sends an OTP to email.
+- Step 3: user enters OTP and new password and submits `/auth/reset-password`.
+
+Backend email flow in auth-service:
+- `AuthController.forgotPassword` calls `authService.sendOtp(email)`.
+- `AuthServiceImpl.sendOtp(email)`:
+  - Verifies the user exists.
+  - Generates a 6-digit OTP.
+  - Stores the OTP in `PasswordResetToken` with expiry time.
+  - Calls `EmailService.sendOtp(email, otp)`.
+
+`EmailService` uses Spring Boot mail and `JavaMailSender`.
+- It sends a `SimpleMailMessage` with a subject of "Password Reset OTP".
+- This is the email mechanism used for forgot-password.
+
+Then `AuthController.resetPassword` calls `authService.resetPassword(email, otp, newPassword)`.
+- Backend verifies OTP and expiry.
+- If valid, it hashes the new password with BCrypt and saves the user.
+
+7. Registration Flow
+--------------------
+
+The register page is `src/pages/Register.jsx`.
+- User enters name, email, password.
+- Submits `POST /auth/register`.
+- Backend `AuthServiceImpl.register`:
+  - Creates a new `User` with role `USER`.
+  - Hashes the password using BCrypt.
+  - Saves the user to the auth database.
+- After registration, the user is redirected to `/login`.
+
+8. Frontend Authentication State
+--------------------------------
+
+The auth slice is in `src/store/authSlice.js`.
+- It initializes state from `localStorage`.
+- `setCredentials` stores the user and tokens.
+- `logout` clears state and removes storage items.
+- This state is used by `Header.jsx`, `ProtectedRoute`, and other pages.
+
+9. API Gateway and Backend Routing
+----------------------------------
+
+The application is designed to run behind `api-gateway`.
+- `api-gateway/src/main/resources/application.yml` defines routes.
+- `/auth/**` → auth-service
+- `/catalog/**` → catalog-service
+- `/orders/**` → order-service
+- `/admin/**` → admin-service
+
+The gateway also configures CORS for `http://localhost:5173`.
+This is the frontend development origin.
+
+10. Product and Catalog Flow
+----------------------------
+
+Product browsing is handled through catalog APIs.
+- Admin page uses `/catalog/products` and `/catalog/categories`.
+- Product list, details, category list pages use the same backend routes.
+- AdminProducts can create, update, delete products.
+- The product admin page also seeds default categories via `/catalog/categories`.
+
+11. Cart Flow
+-------------
+
+The cart is implemented using the order service cart endpoints.
+`src/store/cartSlice.js` calls:
+- `GET /orders/cart` — fetch user cart
+- `POST /orders/cart/items` — add item to cart
+- `PUT /orders/cart/items/{id}` — update item quantity
+- `DELETE /orders/cart/items/{id}` — remove item from cart
+
+The cart state contains:
+- `items`
+- `totalQuantity`
+- `totalAmount`
+
+The header shows the cart item count using `totalQuantity`.
+
+12. Checkout and Order Placement
+--------------------------------
+
+The checkout page is `src/pages/Checkout.jsx`.
+
+Checkout process:
+- Step 1: shipping details form
+- Step 2: payment method selection
+- Step 3: order success confirmation
+
+Payment methods supported in the UI:
+- `CREDIT_CARD`
+- `RAZORPAY`
+- `UPI`
+- `CRYPTO`
+- `COD`
+
+Order flow:
+- The checkout page dispatches `placeOrderFromCart()`.
+- `placeOrderFromCart()` posts to `/orders/place`.
+- This endpoint is in `order-service` and places an order using the user's cart.
+- If payment method is COD, the frontend immediately completes the order and shows success.
+- If payment method is Razorpay, it loads the Razorpay SDK, creates a Razorpay order, and opens the payment popup.
+
+Backend `OrderController` defines:
+- `POST /orders/place` — place order from cart
+- `POST /orders/payment` — process payment for an order
+- `POST /orders/{id}/razorpay/create` — create Razorpay order
+- `POST /orders/{id}/razorpay/verify` — verify Razorpay payment
+- `GET /orders/user` — get orders for current user
+- `GET /orders` — get all orders (admin)
+- `GET /orders/{id}`
+- `PUT /orders/{id}/cancel`
+- `PUT /orders/{id}/status` — admin update
+
+The checkout page also uses `dispatch(clearCart())` after successful order placement.
+
+13. Order History
+-----------------
+
+The user order history page is `src/pages/OrderHistory.jsx`.
+- It dispatches `fetchOrders()` from `src/store/orderSlice.js`.
+- `fetchOrders()` calls `GET /orders/user`.
+- It renders the user's past orders, status, item counts, total amount, and date.
+
+14. Admin Pages
+---------------
+
+Admin routes are protected in the frontend.
+- `ProtectedRoute` in `AppRoutes.jsx` checks `user.role === "ADMIN"`.
+- Admin layout pages are under `/admin`.
+
+Admin pages:
+- `AdminDashboard.jsx` — admin landing page.
+- `AdminProducts.jsx` — manage products and categories.
+- `AdminOrders.jsx` — view all orders and order details.
+
+AdminProducts features:
+- Fetch products using `fetchProducts()` from Redux.
+- Fetch categories from `/catalog/categories`.
+- Add new products using `POST /catalog/products`.
+- Update products using `PUT /catalog/products/{id}`.
+- Delete products using `DELETE /catalog/products/{id}`.
+- Seed default categories with POST calls to `/catalog/categories`.
+
+AdminOrders features:
+- Fetch all orders using `GET /orders`.
+- Filter orders by status and search by order ID/user ID.
+- Show order detail modal with item breakdown.
+
+The header shows the admin dashboard link only when the logged-in user role is ADMIN.
+
+15. Backend Authentication and JWT
+----------------------------------
+
+The backend auth service (`auth-service`) secures users with JWT.
+
+AuthController endpoints:
+- `POST /auth/register` — register a new user
+- `POST /auth/login` — login and receive `token` and `refreshToken`
+- `POST /auth/forgot-password` — send OTP email
+- `POST /auth/reset-password` — reset password with OTP
+- `POST /auth/refresh` — refresh JWT with refresh token
+
+AuthServiceImpl logic:
+- `register` stores a new user with hashed password and role USER.
+- `login` verifies credentials, generates JWT, creates refresh token.
+- `sendOtp` checks if the user exists, generates OTP, stores it, and emails it.
+- `resetPassword` verifies OTP and expiry, hashes the new password.
+
+JWT generation:
+- `JwtUtil.generateToken(user.getEmail(), user.getRole().name())`
+- The token payload includes user identity and role.
+
+Refresh tokens are stored in the database using `RefreshTokenService`.
+- `RefreshTokenServiceImpl.createRefreshToken(userId)` creates a token record.
+- The refresh token is verified and expires as configured.
+
+16. Email Sending
+-----------------
+
+Password reset email is sent with Spring Boot Mail.
+- `EmailService.sendOtp(to, otp)` uses `JavaMailSender`.
+- It sends a simple plain text email with subject "Password Reset OTP".
+- This is used only for forgot password OTP delivery.
+
+17. API Gateway Security Behavior
+---------------------------------
+
+`api-gateway` routes all API calls to the corresponding service.
+- It also rewrites Swagger paths for API documentation.
+- The gateway applies CORS to allow frontend requests.
+
+Important routes:
+- `http://localhost:8089/auth/**` → auth-service
+- `http://localhost:8089/catalog/**` → catalog-service
+- `http://localhost:8089/orders/**` → order-service
+- `http://localhost:8089/admin/**` → admin-service
+
+18. Additional Functionalities
+-----------------------------
+
+Cart management:
+- A logged-in user can add/update/remove cart items.
+- Cart data is fetched from the order service via `/orders/cart`.
+
+Payment methods:
+- COD sets the order as placed with "pay later" semantics.
+- Razorpay integration is supported by creating and verifying an order.
+- Credit card and other payment options are shown in the UI, though the current backend path uses generic `/orders/payment`.
+
+Admin features:
+- Admin can manage products and categories.
+- Admin can also view orders and filter them.
+
+Service discovery and config:
+- The application uses Eureka for service discovery.
+- Spring Cloud Config provides centralized configuration for each service.
+
+Observability:
+- Micrometer and Zipkin tracing are configured in services.
+- This helps trace requests across gateway and microservices.
+
+19. How to Explain It in Evaluation
+-----------------------------------
+
+Suggested flow for your explanation:
+1. Start with the frontend stack and routing.
+2. Describe login and registration flows.
+3. Explain JWT storage and refresh token behavior.
+4. Describe forgot password with email OTP.
+5. Explain how product browsing and cart works.
+6. Describe checkout and order placement.
+7. Mention the admin pages and protected admin routes.
+8. Explain the backend microservice architecture and gateway routes.
+9. Finish with technologies used and how they fit together.
+
+This file is written to help you describe the whole application clearly.
+
+End of explanation.

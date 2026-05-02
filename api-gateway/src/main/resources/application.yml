@@ -1,0 +1,110 @@
+spring:
+  application:
+    name: api-gateway
+
+  config:
+    import: optional:configserver:http://localhost:8888
+
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:5173"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+      routes:
+        # ✅ Dedicated api-docs routes (MUST be before general service routes)
+        # These rewrite /auth/v3/api-docs → /v3/api-docs on the auth-service
+        - id: auth-service-api-docs
+          uri: lb://auth-service
+          predicates:
+            - Path=/auth/v3/api-docs
+          filters:
+            - RewritePath=/auth/v3/api-docs, /v3/api-docs
+
+        - id: catalog-service-api-docs
+          uri: lb://catalog-service
+          predicates:
+            - Path=/catalog/v3/api-docs
+          filters:
+            - RewritePath=/catalog/v3/api-docs, /v3/api-docs
+
+        - id: order-service-api-docs
+          uri: lb://order-service
+          predicates:
+            - Path=/orders/v3/api-docs
+          filters:
+            - RewritePath=/orders/v3/api-docs, /v3/api-docs
+
+        - id: admin-service-api-docs
+          uri: lb://admin-service
+          predicates:
+            - Path=/admin/v3/api-docs
+          filters:
+            - RewritePath=/admin/v3/api-docs, /v3/api-docs
+
+        # ✅ General service routes (Handles actual API traffic!)
+        - id: auth-service-route
+          uri: lb://auth-service
+          predicates:
+            - Path=/auth/**
+
+        - id: catalog-service-route
+          uri: lb://catalog-service
+          predicates:
+            - Path=/catalog/**
+
+        - id: order-service-route
+          uri: lb://order-service
+          predicates:
+            - Path=/orders/**
+
+        - id: admin-service-route
+          uri: lb://admin-service
+          predicates:
+            - Path=/admin/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  tracing:
+    sampling:
+      probability: 0.0
+  zipkin:
+    tracing:
+      connect-timeout: 1s
+      read-timeout: 1s
+
+# ✅ Central Swagger aggregation across all microservices
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    config-url: /v3/api-docs/swagger-config
+    urls:
+      - name: Auth Service API
+        url: /auth/v3/api-docs
+      - name: Catalog Service API
+        url: /catalog/v3/api-docs
+      - name: Order Service API
+        url: /orders/v3/api-docs
+      - name: Admin Service API
+        url: /admin/v3/api-docs
+  webjars:
+    prefix: ""

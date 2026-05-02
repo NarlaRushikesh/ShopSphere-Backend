@@ -1,0 +1,31 @@
+server:
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: order-service
+
+  config:
+    import: optional:configserver:http://localhost:8888
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: "http://localhost:9411/api/v2/spans"
+
+razorpay:
+  key:
+    id: rzp_test_SkN7oRkCurX7J9
+    secret: 3wCBKS75FMwetNOjETnJr89o

@@ -1,0 +1,187 @@
+version: '3.8'
+
+services:
+  # Infrastructure Services
+  mysql-db:
+    image: mysql:9.1
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Rushi@12345
+    ports:
+      - "3310:3306"
+    volumes:
+      - ./mysql-data/Data:/var/lib/mysql
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    restart: unless-stopped
+    ports:
+      - "9411:9411"
+
+  # Core Services
+  eureka-service:
+    build: ./eureka-service
+    container_name: eureka-service
+    restart: unless-stopped
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+
+  config-server:
+    build: ./config-server
+    container_name: config-server
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    restart: unless-stopped
+    ports:
+      - "8089:8089"
+    depends_on:
+      - eureka-service
+      - config-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8089
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    restart: unless-stopped
+    ports:
+      - "8087:8087"
+    depends_on:
+      - mysql-db
+      - eureka-service
+      - config-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_FORWARD_HEADERS_STRATEGY=NATIVE
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/auth_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=Rushi@12345
+      - SPRING_JPA_HIBERNATE_DDLAUTO=update
+      - SPRING_MAIL_HOST=localhost
+      - SPRING_MAIL_PORT=1025
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+
+  catalog-service:
+    build: ./catalog-service
+    container_name: catalog-service
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    depends_on:
+      - mysql-db
+      - eureka-service
+      - config-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_FORWARD_HEADERS_STRATEGY=NATIVE
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/catalog?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=Rushi@12345
+      - SPRING_JPA_HIBERNATE_DDLAUTO=update
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+
+  order-service:
+    build: ./order-service
+    container_name: order-service
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    depends_on:
+      - mysql-db
+      - rabbitmq
+      - eureka-service
+      - config-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_FORWARD_HEADERS_STRATEGY=NATIVE
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/order_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=Rushi@12345
+      - SPRING_JPA_HIBERNATE_DDLAUTO=update
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+
+  notificatoin-service:
+    build: ./notificatoin-service
+    container_name: notificatoin-service
+    restart: unless-stopped
+    ports:
+      - "8085:8085"
+    depends_on:
+      - mysql-db
+      - rabbitmq
+      - eureka-service
+      - config-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_FORWARD_HEADERS_STRATEGY=NATIVE
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/notification_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=Rushi@12345
+      - SPRING_JPA_HIBERNATE_DDLAUTO=update
+      - SPRING_MAIL_HOST=localhost
+      - SPRING_MAIL_PORT=1025
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+
+  admin-service:
+    build: ./admin-service
+    container_name: admin-service
+    restart: unless-stopped
+    ports:
+      - "8084:8084" 
+    depends_on:
+      - eureka-service
+      - config-server
+    environment:
+      - SERVER_PORT=8084
+      - SERVER_FORWARD_HEADERS_STRATEGY=NATIVE
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+
+  shopsphere-frontend:
+    build:
+      context: ./shopsphere-frontend
+      args:
+        VITE_API_BASE_URL: http://${EC2_PUBLIC_IP:-localhost}:8089
+    container_name: shopsphere-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
+
+volumes:
+  mysql-data:
