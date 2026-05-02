@@ -23,6 +23,13 @@ public class EmailService {
         message.setSubject("Password Reset OTP");
         message.setText("Your OTP is: " + otp);
 
-        mailSender.send(message);
+        try {
+            System.out.println("📤 Attempting to send OTP to: " + to);
+            mailSender.send(message);
+            System.out.println("✅ OTP sent successfully to: " + to);
+        } catch (Exception e) {
+            System.err.println("❌ Failed to send OTP to " + to + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

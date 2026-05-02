@@ -74,6 +74,7 @@ jobs:
         command_timeout: 20m
         script: |
           cd ~/shopsphere
+          git pull origin main
           export EC2_PUBLIC_IP=${{ secrets.EC2_HOST }}
           export MAIL_USERNAME='${{ secrets.MAIL_USERNAME }}'
           export MAIL_PASSWORD='${{ secrets.MAIL_PASSWORD }}'

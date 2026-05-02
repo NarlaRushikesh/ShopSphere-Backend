@@ -29,6 +29,13 @@ public class EmailService {
                 "Thank you for shopping with us!"
         );
 
-        mailSender.send(message);
+        try {
+            System.out.println("📤 Attempting to send email to: " + toEmail);
+            mailSender.send(message);
+            System.out.println("✅ Email sent successfully to: " + toEmail);
+        } catch (Exception e) {
+            System.err.println("❌ Failed to send email to " + toEmail + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }
