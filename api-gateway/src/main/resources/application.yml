@@ -71,6 +71,13 @@ spring:
           predicates:
             - Path=/admin/**
 
+        - id: notification-service-route
+          uri: lb://notification-service
+          predicates:
+            - Path=/notification/**
+          filters:
+            - RewritePath=/notification/(?<segment>.*), /${segment}
+
 eureka:
   client:
     service-url:
