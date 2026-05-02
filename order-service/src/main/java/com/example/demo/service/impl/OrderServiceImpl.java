@@ -224,6 +224,15 @@ public class OrderServiceImpl implements OrderService {
         // Clear user's cart
         cartService.clearCart(email);
 
+        // 🔥 SEND EVENT TO RABBITMQ (Notification Service consumes this)
+        OrderEvent event = new OrderEvent();
+        event.setOrderId(savedOrder.getId());
+        event.setUserId(savedOrder.getUserId()); 
+        event.setTotalAmount(savedOrder.getTotalAmount());
+        event.setStatus(savedOrder.getStatus().name());
+
+        orderProducer.sendOrderEvent(event);
+
         return mapToResponse(savedOrder);
     }
 
