@@ -77,4 +77,6 @@ jobs:
           export EC2_PUBLIC_IP=${{ secrets.EC2_HOST }}
           export MAIL_USERNAME='${{ secrets.MAIL_USERNAME }}'
           export MAIL_PASSWORD='${{ secrets.MAIL_PASSWORD }}'
+          export RAZORPAY_KEY_ID='${{ secrets.RAZORPAY_KEY_ID }}'
+          export RAZORPAY_KEY_SECRET='${{ secrets.RAZORPAY_KEY_SECRET }}'
           sudo -E docker-compose up -d --build

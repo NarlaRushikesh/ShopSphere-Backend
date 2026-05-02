@@ -27,5 +27,5 @@ management:
 
 razorpay:
   key:
-    id: rzp_test_SkN7oRkCurX7J9
-    secret: 3wCBKS75FMwetNOjETnJr89o
+    id: ${RAZORPAY_KEY_ID:rzp_test_SkN7oRkCurX7J9}
+    secret: ${RAZORPAY_KEY_SECRET:3wCBKS75FMwetNOjETnJr89o}

@@ -9,20 +9,26 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Configuration
 public class SecurityConfig {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private JwtFilter jwtFilter;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                // ✅ Allow auth APIs
+                // ✅ Allow public auth APIs
                 .requestMatchers(
-                		"/auth/**",
-                		"/auth/register",
+                        "/auth/register",
+                        "/auth/signup",
                         "/auth/login",
                         "/auth/forgot-password",
                         "/auth/reset-password"
-                		).permitAll()
+                ).permitAll()
+
+                // 🔒 Secure user management - only ADMIN
+                .requestMatchers("/auth/users/**").hasRole("ADMIN")
 
                 // ✅ Allow Swagger (direct and gateway-prefixed paths)
                 .requestMatchers(
@@ -33,7 +39,8 @@ public class SecurityConfig {
 
                 // 🔒 Secure others
                 .anyRequest().authenticated()
-            );
+            )
+            .addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
