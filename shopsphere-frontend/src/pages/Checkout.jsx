@@ -385,7 +385,7 @@ const Checkout = () => {
                   className="flex justify-between text-sm"
                 >
                   <span className="text-foreground font-medium truncate pr-4">
-                    {item.quantity}x {item.name}
+                    {item.quantity}x {item.productName}
                   </span>
                   <span className="font-bold text-foreground">
                     ₹{(item.price * item.quantity).toFixed(2)}

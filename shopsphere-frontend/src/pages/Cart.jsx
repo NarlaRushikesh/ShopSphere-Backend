@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag } from "lucide-react";
@@ -87,14 +87,14 @@ const Cart = () => {
                 >
                   <div className="col-span-1 sm:col-span-6 flex items-center gap-4">
                     <div className="w-20 h-20 bg-secondary rounded-lg flex-shrink-0 border border-border flex items-center justify-center overflow-hidden">
-                      <CartItemImage productId={item.productId} fallbackName={item.name} />
+                      <CartItemImage productId={item.productId} fallbackName={item.productName} />
                     </div>
                     <div>
                       <Link
                         to={`/products/${item.productId}`}
                         className="font-semibold text-foreground hover:text-primary transition-colors line-clamp-2"
                       >
-                        {item.name}
+                        {item.productName}
                       </Link>
                       <div className="text-sm text-muted mt-1">
                         ₹{item.price.toFixed(2)}
