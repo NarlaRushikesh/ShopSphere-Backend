@@ -232,11 +232,20 @@ public class OrderServiceImpl implements OrderService {
         cartService.clearCart(email);
 
         // 5. Send order event to RabbitMQ for notification-service
+        List<OrderItemEvent> itemEvents = savedOrder.getItems().stream()
+                .map(item -> OrderItemEvent.builder()
+                        .productName(item.getProductName())
+                        .quantity(item.getQuantity())
+                        .price(item.getPrice())
+                        .build())
+                .toList();
+
         OrderEvent event = OrderEvent.builder()
                 .orderId(savedOrder.getId())
                 .userId(savedOrder.getUserId())
                 .totalAmount(savedOrder.getTotalAmount())
                 .status(savedOrder.getStatus().name())
+                .items(itemEvents)
                 .build();
 
         System.out.println("📤 Sending order event to RabbitMQ: " + event);

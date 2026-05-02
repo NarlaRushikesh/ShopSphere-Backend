@@ -22,7 +22,8 @@ public class OrderConsumer {
         emailService.sendOrderConfirmation(
                 event.getUserId(),   // email
                 event.getOrderId(),
-                event.getTotalAmount()
+                event.getTotalAmount(),
+                event.getItems()
         );
     }
 }

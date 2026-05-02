@@ -11,4 +11,5 @@ public class OrderEvent {
     private String userId;
     private double totalAmount;
     private String status;
+    private java.util.List<OrderItemEvent> items;
 }

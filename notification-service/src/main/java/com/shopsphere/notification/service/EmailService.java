@@ -15,7 +15,17 @@ public class EmailService {
     @org.springframework.beans.factory.annotation.Value("${spring.mail.username}")
     private String fromEmail;
 
-    public void sendOrderConfirmation(String toEmail, Long orderId, double amount) {
+    public void sendOrderConfirmation(String toEmail, Long orderId, double amount, java.util.List<com.shopsphere.notification.dto.OrderItemEvent> items) {
+        StringBuilder itemDetails = new StringBuilder();
+        itemDetails.append("\nItems Purchased:\n");
+        itemDetails.append("----------------------------\n");
+        if (items != null) {
+            for (com.shopsphere.notification.dto.OrderItemEvent item : items) {
+                itemDetails.append(String.format("- %s (Qty: %d) - ₹%.2f\n", 
+                        item.getProductName(), item.getQuantity(), item.getPrice() * item.getQuantity()));
+            }
+        }
+        itemDetails.append("----------------------------\n");
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
@@ -25,7 +35,8 @@ public class EmailService {
                 "Hello,\n\n" +
                 "Your order has been placed successfully!\n\n" +
                 "Order ID: " + orderId + "\n" +
-                "Total Amount: ₹" + amount + "\n\n" +
+                itemDetails.toString() +
+                "\nTotal Amount: ₹" + amount + "\n\n" +
                 "Thank you for shopping with us!"
         );
 

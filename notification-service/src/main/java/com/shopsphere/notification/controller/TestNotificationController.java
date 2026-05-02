@@ -15,7 +15,7 @@ public class TestNotificationController {
     @GetMapping("/test-email")
     public String testEmail(@RequestParam String email) {
         try {
-            emailService.sendOrderConfirmation(email, 12345L, 1.0);
+            emailService.sendOrderConfirmation(email, 12345L, 1.0, java.util.Collections.emptyList());
             return "Test email request triggered for " + email + ". Check logs for result.";
         } catch (Exception e) {
             return "Error triggering email: " + e.getMessage();
