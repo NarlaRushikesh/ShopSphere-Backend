@@ -34,33 +34,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void register(RegisterRequest request) {
 
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already registered");
-        }
-
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.USER) 
-                .enabled(false) // Disable until OTP verification
+                .role(Role.USER) // Enforce USER role for all registrations
                 .build();
 
         userRepository.save(user);
-        
-        // Clear any existing tokens for this email to avoid conflicts
-        passwordResetRepository.deleteByEmail(request.getEmail());
-        
-        // Generate and send OTP for verification
-        String otp = String.valueOf((int)(Math.random() * 900000) + 100000);
-        PasswordResetToken token = PasswordResetToken.builder()
-                .email(request.getEmail())
-                .otp(otp)
-                .expiryTime(LocalDateTime.now().plusMinutes(15))
-                .build();
-
-        passwordResetRepository.save(token);
-        emailService.sendOtp(request.getEmail(), otp); // Reusing sendOtp for registration too
     }
 
     @Override
@@ -68,10 +49,6 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!user.isEnabled()) {
-            throw new RuntimeException("Account not verified. Please verify your email first.");
-        }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid credentials");
@@ -81,36 +58,6 @@ public class AuthServiceImpl implements AuthService {
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
 
         return new AuthResponse(token, refreshToken.getToken());
-    }
-
-    @Override
-    public void verifyRegistration(String email, String otp) {
-        String cleanEmail = email.trim();
-        String cleanOtp = otp.trim();
-
-        System.out.println("🔍 Debug: Verifying registration for " + cleanEmail + " with OTP: " + cleanOtp);
-
-        PasswordResetToken token = passwordResetRepository
-                .findTopByEmailOrderByExpiryTimeDesc(cleanEmail)
-                .orElseThrow(() -> new RuntimeException("No verification code found for " + cleanEmail));
-
-        if (!token.getOtp().equals(cleanOtp)) {
-            System.out.println("❌ Debug: OTP Mismatch! Expected: " + token.getOtp() + ", Received: " + cleanOtp);
-            throw new RuntimeException("Invalid OTP code. Please check your email and try again.");
-        }
-
-        if (token.getExpiryTime().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Verification code has expired. Please request a new one.");
-        }
-
-        User user = userRepository.findByEmail(cleanEmail)
-                .orElseThrow(() -> new RuntimeException("User account not found"));
-
-        user.setEnabled(true);
-        userRepository.save(user);
-        
-        passwordResetRepository.delete(token);
-        System.out.println("✅ Debug: User verified successfully: " + cleanEmail);
     }
     @Override
     public void sendOtp(String email) {
