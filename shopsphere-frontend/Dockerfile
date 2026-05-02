@@ -10,7 +10,9 @@ RUN npm install
 # Copy project files and build the app
 COPY . .
 ARG VITE_API_BASE_URL
+ARG VITE_RAZORPAY_KEY_ID
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_RAZORPAY_KEY_ID=$VITE_RAZORPAY_KEY_ID
 RUN npm run build
 
 # Stage 2: Serve the app with Nginx

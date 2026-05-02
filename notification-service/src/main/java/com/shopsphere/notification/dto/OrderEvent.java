@@ -1,8 +1,11 @@
 package com.shopsphere.notification.dto;
 
-import lombok.Data;
+import lombok.*;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class OrderEvent {
     private Long orderId;
     private String userId;
