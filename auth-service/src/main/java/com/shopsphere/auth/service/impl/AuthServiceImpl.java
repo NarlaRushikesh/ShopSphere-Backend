@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@org.springframework.transaction.annotation.Transactional
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -48,8 +49,7 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
         
         // Clear any existing tokens for this email to avoid conflicts
-        passwordResetRepository.findByEmail(request.getEmail())
-                .ifPresent(passwordResetRepository::delete);
+        passwordResetRepository.deleteByEmail(request.getEmail());
         
         // Generate and send OTP for verification
         String otp = String.valueOf((int)(Math.random() * 900000) + 100000);
