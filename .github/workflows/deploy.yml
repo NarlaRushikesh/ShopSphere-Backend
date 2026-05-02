@@ -79,4 +79,4 @@ jobs:
           export MAIL_PASSWORD='${{ secrets.MAIL_PASSWORD }}'
           export RAZORPAY_KEY_ID='${{ secrets.RAZORPAY_KEY_ID }}'
           export RAZORPAY_KEY_SECRET='${{ secrets.RAZORPAY_KEY_SECRET }}'
-          sudo -E docker-compose up -d --build
+          sudo -E docker-compose up -d --build --remove-orphans
