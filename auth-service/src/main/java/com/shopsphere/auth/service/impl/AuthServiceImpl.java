@@ -47,6 +47,10 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
         
+        // Clear any existing tokens for this email to avoid conflicts
+        passwordResetRepository.findByEmail(request.getEmail())
+                .ifPresent(passwordResetRepository::delete);
+        
         // Generate and send OTP for verification
         String otp = String.valueOf((int)(Math.random() * 900000) + 100000);
         PasswordResetToken token = PasswordResetToken.builder()

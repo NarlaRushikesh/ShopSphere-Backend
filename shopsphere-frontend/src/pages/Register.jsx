@@ -1,11 +1,15 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { User, Mail, Lock, UserPlus, AlertCircle } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { User, Mail, Lock, UserPlus, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "react-toastify";
 import api from "../services/api";
 
 const Register = () => {
-  const [step, setStep] = useState(1); // 1: Register, 2: Verify OTP
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const isVerifyOnly = queryParams.get("verify") === "true";
+
+  const [step, setStep] = useState(isVerifyOnly ? 2 : 1); 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,6 +17,23 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  const handleResendOtp = async () => {
+    if (!email) {
+      toast.error("Please enter your email first");
+      setStep(1);
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.post("/auth/forgot-password", { email }); // Reusing forgot-password to send OTP
+      toast.success("New OTP sent to " + email);
+    } catch (err) {
+      toast.error("Failed to resend OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -126,27 +147,60 @@ const Register = () => {
             </div>
           </>
         ) : (
-          <div>
-            <label className="block text-sm font-medium text-foreground/80 mb-2">
-              Verification Code (OTP)
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <AlertCircle className="h-5 w-5 text-muted" />
+          <div className="space-y-4">
+            {isVerifyOnly && (
+               <div>
+               <label className="block text-sm font-medium text-foreground/80 mb-2">
+                 Email Address
+               </label>
+               <div className="relative">
+                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                   <Mail className="h-5 w-5 text-muted" />
+                 </div>
+                 <input
+                   type="email"
+                   required
+                   value={email}
+                   onChange={(e) => setEmail(e.target.value)}
+                   className="block w-full pl-10 pr-3 py-3 border border-border rounded-lg focus:ring-primary focus:border-primary transition-colors bg-secondary/50"
+                   placeholder="you@example.com"
+                 />
+               </div>
+             </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-foreground/80 mb-2">
+                Verification Code (OTP)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <AlertCircle className="h-5 w-5 text-muted" />
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-3 border border-border rounded-lg focus:ring-primary focus:border-primary transition-colors bg-secondary/50 text-center tracking-widest text-lg font-bold"
+                  placeholder="000000"
+                  maxLength={6}
+                />
               </div>
-              <input
-                type="text"
-                required
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                className="block w-full pl-10 pr-3 py-3 border border-border rounded-lg focus:ring-primary focus:border-primary transition-colors bg-secondary/50 text-center tracking-widest text-lg font-bold"
-                placeholder="000000"
-                maxLength={6}
-              />
+              <div className="flex justify-between items-center mt-3">
+                <p className="text-xs text-muted">
+                  Check your email <strong>{email}</strong>
+                </p>
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={loading}
+                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                >
+                  <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                  Resend OTP
+                </button>
+              </div>
             </div>
-            <p className="mt-3 text-xs text-muted text-center">
-              We've sent a 6-digit code to <strong>{email}</strong>
-            </p>
           </div>
         )}
 

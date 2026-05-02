@@ -60,9 +60,19 @@ const Login = () => {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 text-red-700">
-          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-          <p className="text-sm">{error}</p>
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex flex-col gap-2 text-red-700">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+            <p className="text-sm">{error}</p>
+          </div>
+          {error.includes("not verified") && (
+            <Link 
+              to="/register?verify=true" 
+              className="text-xs font-bold underline ml-8 hover:text-red-800"
+            >
+              Verify your account now
+            </Link>
+          )}
         </div>
       )}
 
