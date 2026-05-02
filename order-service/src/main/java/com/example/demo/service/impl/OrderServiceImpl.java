@@ -171,11 +171,18 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public OrderResponse placeOrderFromCart(String email) {
+        System.out.println("📦 Placing order from cart for user: " + email);
+        
+        if (email == null || email.trim().isEmpty() || email.equals("anonymousUser")) {
+            throw new RuntimeException("User must be authenticated to place an order");
+        }
+
         CartDTO cart = cartService.getCartByUserEmail(email);
 
         if (cart.getItems() == null || cart.getItems().isEmpty()) {
-            throw new RuntimeException("Cart is empty");
+            throw new RuntimeException("Cart is empty for user: " + email);
         }
 
         List<OrderItem> orderItems = new ArrayList<>();
@@ -210,27 +217,29 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Order savedOrder = orderRepository.save(order);
+        System.out.println("✅ Order saved successfully. ID: " + savedOrder.getId() + ", User: " + savedOrder.getUserId());
 
         // Reduce stock in catalog-service for each item (best-effort)
         for (OrderItem item : orderItems) {
             try {
                 catalogClient.reduceStock(item.getProductId(), item.getQuantity());
             } catch (Exception e) {
-                // Log but don't fail the order — stock sync can be retried
                 System.err.println("Warning: failed to reduce stock for product " + item.getProductId() + ": " + e.getMessage());
             }
         }
 
-        // Clear user's cart
+        // 4. Clear the cart
         cartService.clearCart(email);
 
-        // 🔥 SEND EVENT TO RABBITMQ (Notification Service consumes this)
-        OrderEvent event = new OrderEvent();
-        event.setOrderId(savedOrder.getId());
-        event.setUserId(savedOrder.getUserId()); 
-        event.setTotalAmount(savedOrder.getTotalAmount());
-        event.setStatus(savedOrder.getStatus().name());
+        // 5. Send order event to RabbitMQ for notification-service
+        OrderEvent event = OrderEvent.builder()
+                .orderId(savedOrder.getId())
+                .userId(savedOrder.getUserId())
+                .totalAmount(savedOrder.getTotalAmount())
+                .status(savedOrder.getStatus().name())
+                .build();
 
+        System.out.println("📤 Sending order event to RabbitMQ: " + event);
         orderProducer.sendOrderEvent(event);
 
         return mapToResponse(savedOrder);
