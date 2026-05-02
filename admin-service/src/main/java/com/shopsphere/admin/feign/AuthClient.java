@@ -3,7 +3,7 @@ package com.shopsphere.admin.feign;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 
-@FeignClient(name = "auth-service", url = "http://localhost:8087")
+@FeignClient(name = "auth-service")
 public interface AuthClient {
 
     @GetMapping("/auth/users/count")

@@ -173,10 +173,15 @@ services:
     depends_on:
       - eureka-service
       - config-server
+      - auth-service
+      - catalog-service
+      - order-service
     environment:
       - SERVER_PORT=8084
+      - SPRING_PROFILES_ACTIVE=docker
       - SERVER_FORWARD_HEADERS_STRATEGY=NATIVE
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
       - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
 
   shopsphere-frontend:
