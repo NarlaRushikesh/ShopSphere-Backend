@@ -9,6 +9,7 @@ public interface AuthService {
     AuthResponse login(AuthRequest request);
     void sendOtp(String email);
 
+    void verifyRegistration(String email, String otp);
     void resetPassword(String email, String otp, String newPassword);
     
     RefreshTokenService getRefreshTokenService();

@@ -20,7 +20,13 @@ public class AuthController {
     @PostMapping(value = {"/register", "/signup"})
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
-        return ResponseEntity.ok("User registered successfully");
+        return ResponseEntity.ok("User registered successfully. Please check your email for the verification OTP.");
+    }
+
+    @PostMapping("/verify-registration")
+    public ResponseEntity<String> verifyRegistration(@Valid @RequestBody VerifyRegistrationRequest request) {
+        authService.verifyRegistration(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok("Email verified successfully. You can now login.");
     }
 
     @PostMapping("/login")
