@@ -182,7 +182,7 @@ const Cart = () => {
           <div className="border-t border-border pt-4 mb-8 flex justify-between items-center">
             <span className="font-bold text-lg">Total</span>
             <span className="font-bold text-2xl text-primary">
-              ₹{(totalAmount * 1.08).toFixed(2)}
+              ₹{items.some(item => item.productName === "Test 1 Rupee Product") ? totalAmount.toFixed(2) : (totalAmount * 1.08).toFixed(2)}
             </span>
           </div>
 

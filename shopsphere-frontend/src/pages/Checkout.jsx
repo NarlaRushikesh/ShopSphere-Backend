@@ -397,7 +397,7 @@ const Checkout = () => {
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
                 <span className="text-primary">
-                  ₹{(totalAmount * 1.08).toFixed(2)}
+                  ₹{items.some(item => item.productName === "Test 1 Rupee Product") ? totalAmount.toFixed(2) : (totalAmount * 1.08).toFixed(2)}
                 </span>
               </div>
             </div>

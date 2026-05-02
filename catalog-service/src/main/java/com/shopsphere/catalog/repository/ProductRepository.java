@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Page<Product> findByNameContainingIgnoreCase(String name, Pageable pageable);
+    java.util.Optional<Product> findByName(String name);
 
     List<Product> findByIsFeaturedTrue();
 

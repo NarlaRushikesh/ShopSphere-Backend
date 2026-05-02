@@ -28,7 +28,32 @@ public class DataSeeder {
     @Bean
     public CommandLineRunner initData() {
         return args -> {
-            if (categoryRepository.count() == 0) {
+            // Always ensure 'Testing' category exists for Razorpay testing
+            Category testingCategory = categoryRepository.findByName("Testing").orElseGet(() -> {
+                Category cat = new Category();
+                cat.setName("Testing");
+                cat.setDescription("Category for payment testing");
+                cat.setImageUrl("https://picsum.photos/seed/testing/400/300");
+                return categoryRepository.save(cat);
+            });
+
+            // Always ensure 'Test 1 Rupee Product' exists
+            if (productRepository.findByName("Test 1 Rupee Product").isEmpty()) {
+                Product testProduct = new Product();
+                testProduct.setName("Test 1 Rupee Product");
+                testProduct.setDescription("A low-cost product for testing Razorpay integration.");
+                testProduct.setPrice(1.0); // 1 Rupee
+                testProduct.setStock(999);
+                testProduct.setBrand("ShopSphere");
+                testProduct.setImageUrl("https://picsum.photos/seed/testproduct/400/300");
+                testProduct.setThumbnail("https://picsum.photos/seed/testproduct/100/100");
+                testProduct.setFeatured(true);
+                testProduct.setCategory(testingCategory);
+                productRepository.save(testProduct);
+                System.out.println("✅ Test 1 Rupee Product created successfully!");
+            }
+
+            if (categoryRepository.count() <= 1) { // 1 because we just added 'Testing'
                 try {
                     System.out.println("📦 No data found. Fetching categories from dummyjson...");
                     RestTemplate restTemplate = new RestTemplate();
@@ -39,18 +64,17 @@ public class DataSeeder {
                     JsonNode categoriesNode = mapper.readTree(categoriesJson);
 
                     Map<String, Category> categoryMap = new HashMap<>();
+                    categoryMap.put("testing", testingCategory);
 
                     for (JsonNode catNode : categoriesNode) {
                         String slug = catNode.has("slug") ? catNode.get("slug").asText() : null;
                         String name = catNode.has("name") ? catNode.get("name").asText() : (slug != null ? slug : "Unknown");
                         
-                        if (slug == null) continue; // Skip if no slug
+                        if (slug == null || name.equalsIgnoreCase("Testing")) continue; 
 
                         Category category = new Category();
                         category.setName(name);
                         category.setDescription(name + " products");
-                        
-                        // source.unsplash.com is deprecated, using picsum.photos instead for reliable placeholder images
                         category.setImageUrl("https://picsum.photos/seed/" + slug + "/400/300");
                         
                         category = categoryRepository.save(category);
@@ -61,7 +85,6 @@ public class DataSeeder {
 
                     // 2. Fetch Products
                     System.out.println("🛒 Fetching and seeding products...");
-                    // Full 194 products as requested in bonus
                     String productsUrl = "https://dummyjson.com/products?limit=194";
                     String productsJson = restTemplate.getForObject(productsUrl, String.class);
                     JsonNode productsRoot = mapper.readTree(productsJson);
@@ -91,13 +114,12 @@ public class DataSeeder {
 
                         productRepository.save(product);
                     }
-                    System.out.println("🎉 Data Imported Successfully! Total Categories: " + categoryRepository.count() + " | Total Products: " + productRepository.count());
+                    System.out.println("🎉 Data Imported Successfully!");
                 } catch (Exception e) {
                     System.err.println("❌ Error during data seeding: " + e.getMessage());
-                    e.printStackTrace();
                 }
             } else {
-                System.out.println("✅ Database already contains data. Skipping seeding.");
+                System.out.println("✅ Database already contains data. Skipping full dummyjson seeding.");
             }
         };
     }
