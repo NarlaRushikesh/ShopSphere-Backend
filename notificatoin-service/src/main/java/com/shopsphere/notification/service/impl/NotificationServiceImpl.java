@@ -5,7 +5,7 @@ import com.shopsphere.notification.service.NotificationService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -16,11 +16,15 @@ import org.springframework.stereotype.Service;
 public class NotificationServiceImpl implements NotificationService {
 
 	private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username}")
+    private String fromEmail;
     @Override
     public void sendOrderNotification(OrderEvent event) {
 
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo("narlarushikesh@gmail.com"); // change this
+        message.setFrom(fromEmail);
+        message.setTo(event.getUserId()); // customer's email (stored as userId)
         message.setSubject("Order Confirmation - " + event.getOrderId());
 
         message.setText(
