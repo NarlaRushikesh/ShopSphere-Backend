@@ -85,22 +85,32 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void verifyRegistration(String email, String otp) {
-        PasswordResetToken token = passwordResetRepository
-                .findByEmailAndOtp(email, otp)
-                .orElseThrow(() -> new RuntimeException("Invalid OTP"));
+        String cleanEmail = email.trim();
+        String cleanOtp = otp.trim();
 
-        if (token.getExpiryTime().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("OTP expired");
+        System.out.println("🔍 Debug: Verifying registration for " + cleanEmail + " with OTP: " + cleanOtp);
+
+        PasswordResetToken token = passwordResetRepository
+                .findTopByEmailOrderByExpiryTimeDesc(cleanEmail)
+                .orElseThrow(() -> new RuntimeException("No verification code found for " + cleanEmail));
+
+        if (!token.getOtp().equals(cleanOtp)) {
+            System.out.println("❌ Debug: OTP Mismatch! Expected: " + token.getOtp() + ", Received: " + cleanOtp);
+            throw new RuntimeException("Invalid OTP code. Please check your email and try again.");
         }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (token.getExpiryTime().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Verification code has expired. Please request a new one.");
+        }
+
+        User user = userRepository.findByEmail(cleanEmail)
+                .orElseThrow(() -> new RuntimeException("User account not found"));
 
         user.setEnabled(true);
         userRepository.save(user);
         
-        // Clean up OTP after verification
         passwordResetRepository.delete(token);
+        System.out.println("✅ Debug: User verified successfully: " + cleanEmail);
     }
     @Override
     public void sendOtp(String email) {
