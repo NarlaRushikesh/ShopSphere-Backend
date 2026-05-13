@@ -125,7 +125,7 @@ const Login = () => {
               <LogIn className="h-5 w-5" /> Sign In
             </>
           )}
-        </button>
+        </button >
       </form>
 
       <p className="mt-8 text-center text-sm text-foreground/70">
